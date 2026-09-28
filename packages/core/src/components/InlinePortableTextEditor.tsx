@@ -15,6 +15,8 @@ import Focus from "@tiptap/extension-focus";
 import Image from "@tiptap/extension-image";
 import Link from "@tiptap/extension-link";
 import Placeholder from "@tiptap/extension-placeholder";
+import Subscript from "@tiptap/extension-subscript";
+import Superscript from "@tiptap/extension-superscript";
 import TextAlign from "@tiptap/extension-text-align";
 import Typography from "@tiptap/extension-typography";
 import Underline from "@tiptap/extension-underline";
@@ -28,12 +30,18 @@ import { createPortal } from "react-dom";
 
 import { resolveImageMedia } from "../content/converters/gallery.js";
 import {
+	assertPortableTextMarksSupported,
+	assertProseMirrorMarksSupported,
+	UnsupportedPortableTextMarksError,
+} from "../content/converters/mark-safety.js";
+import {
 	deriveLegacyListId,
 	normalizeProseMirrorOrderedListJson,
 	normalizeListId,
 	normalizeListStart,
 	readOrderedListMetadata,
 } from "../content/converters/numbered-list.js";
+import type { PortableTextBlock, ProseMirrorDocument } from "../content/converters/types.js";
 import { computeThumbnailSize } from "../media/thumbnail.js";
 import { CodeMarkExtension } from "./code-mark.js";
 import { InlineCodeBlockExtension } from "./inline-code-block.js";
@@ -449,6 +457,7 @@ function convertPMMark(
 
 function portableTextToPM(blocks: PTBlock[]): JSONContent {
 	if (!blocks || blocks.length === 0) return { type: "doc", content: [{ type: "paragraph" }] };
+	assertPortableTextMarksSupported(blocks as PortableTextBlock[]);
 
 	const content: PMNode[] = [];
 	let i = 0;
@@ -813,6 +822,12 @@ function convertPTMarks(marks: string[], markDefs: Map<string, PTMarkDef>): Mark
 			case "code":
 				pm.push({ type: "code" });
 				break;
+			case "superscript":
+				pm.push({ type: "superscript" });
+				break;
+			case "subscript":
+				pm.push({ type: "subscript" });
+				break;
 			default: {
 				const md = markDefs.get(mark);
 				if (md && md._type === "link") {
@@ -947,6 +962,23 @@ function InlineBubbleMenu({ editor }: { editor: Editor }) {
 						title="Code"
 					>
 						<span style={{ fontFamily: "monospace", fontSize: "13px" }}>&lt;/&gt;</span>
+					</button>
+					<span className="emdash-bubble-divider" />
+					<button
+						type="button"
+						className={`emdash-bubble-btn ${editor.isActive("superscript") ? "emdash-bubble-btn--active" : ""}`}
+						onClick={() => editor.chain().focus().toggleSuperscript().run()}
+						title="Superscript"
+					>
+						<span style={{ fontSize: "13px" }}>x²</span>
+					</button>
+					<button
+						type="button"
+						className={`emdash-bubble-btn ${editor.isActive("subscript") ? "emdash-bubble-btn--active" : ""}`}
+						onClick={() => editor.chain().focus().toggleSubscript().run()}
+						title="Subscript"
+					>
+						<span style={{ fontSize: "13px" }}>x₂</span>
 					</button>
 					<span className="emdash-bubble-divider" />
 					<button
@@ -2167,16 +2199,33 @@ export function InlinePortableTextEditor({
 		);
 	});
 
-	const initialContent = React.useMemo(
-		() => portableTextToPM(value || []),
-		[], // Only compute once on mount
-	);
+	const [loadState] = React.useState<{
+		content: JSONContent;
+		error: UnsupportedPortableTextMarksError | null;
+	}>(() => {
+		try {
+			return { content: portableTextToPM(value || []), error: null };
+		} catch (error) {
+			if (error instanceof UnsupportedPortableTextMarksError) {
+				return {
+					content: { type: "doc", content: [{ type: "paragraph" }] },
+					error,
+				};
+			}
+			throw error;
+		}
+	});
+
+	const initialContent = loadState.content;
+	const loadError = loadState.error;
+	const [saveError, setSaveError] = React.useState<string | null>(null);
 
 	const getBlocks = React.useCallback((): PTBlock[] => {
 		const editor = editorRef.current;
 		if (!editor) return initialRef.current;
 		const json: unknown = editor.getJSON();
 		if (!isPMNode(json)) return initialRef.current;
+		assertProseMirrorMarksSupported(json as ProseMirrorDocument);
 		return pmToPortableText(json);
 	}, []);
 
@@ -2185,6 +2234,7 @@ export function InlinePortableTextEditor({
 			// A pagehide flush must not be skipped: an in-flight blur save is
 			// cancelled by the navigation, so the keepalive request is the only
 			// one that can still land.
+			if (loadError) return;
 			if (savingRef.current && !options?.keepalive) return;
 
 			const doc = editorRef.current?.state.doc;
@@ -2205,6 +2255,7 @@ export function InlinePortableTextEditor({
 				);
 
 				if (res.ok) {
+					setSaveError(null);
 					initialRef.current = blocks;
 					savedDocRef.current = doc;
 					document.dispatchEvent(new CustomEvent("emdash:save", { detail: { state: "saved" } }));
@@ -2214,17 +2265,19 @@ export function InlinePortableTextEditor({
 						}),
 					);
 				} else {
+					setSaveError(`Save failed: ${res.status}`);
 					document.dispatchEvent(new CustomEvent("emdash:save", { detail: { state: "error" } }));
 					console.error("Save failed:", res.status);
 				}
 			} catch (err) {
+				setSaveError(err instanceof Error ? err.message : "Save failed");
 				document.dispatchEvent(new CustomEvent("emdash:save", { detail: { state: "error" } }));
 				console.error("Save failed:", err);
 			} finally {
 				savingRef.current = false;
 			}
 		},
-		[collection, entryId, field, getBlocks],
+		[collection, entryId, field, getBlocks, loadError],
 	);
 
 	// Flush unsaved edits when the page goes away (browser back/forward,
@@ -2283,6 +2336,8 @@ export function InlinePortableTextEditor({
 				},
 			}),
 			Underline,
+			Subscript,
+			Superscript,
 			Link.configure({
 				openOnClick: false,
 				HTMLAttributes: { class: "underline text-blue-600 dark:text-blue-400" },
@@ -2308,6 +2363,7 @@ export function InlinePortableTextEditor({
 			slashCommandsExtension,
 		],
 		content: initialContent,
+		editable: !loadError,
 		immediatelyRender: false,
 		editorProps: {
 			attributes: {
@@ -2383,8 +2439,22 @@ export function InlinePortableTextEditor({
 
 	return (
 		<div onBlur={handleBlur}>
-			<InlineBubbleMenu editor={editor} />
-			<EditorContent editor={editor} />
+			{loadError ? (
+				<div className="emdash-inline-editor-error" role="alert" aria-live="assertive" dir="auto">
+					This field can’t be edited here because it contains unsupported Portable Text marks:{" "}
+					{loadError.marks.join(", ")}.
+				</div>
+			) : (
+				<>
+					<InlineBubbleMenu editor={editor} />
+					<EditorContent editor={editor} />
+				</>
+			)}
+			{saveError ? (
+				<div className="emdash-inline-editor-error" role="alert" aria-live="assertive" dir="auto">
+					{saveError}
+				</div>
+			) : null}
 			{unsupportedFileGuidance ? (
 				<div
 					key={unsupportedFileGuidance.version}
@@ -2660,6 +2730,19 @@ export function InlinePortableTextEditor({
 					line-height: 1.4;
 					text-align: start;
 				}
+				.emdash-inline-editor-error {
+					margin-block-start: 0.75rem;
+					padding-block: 0.625rem;
+					padding-inline: 0.875rem;
+					border: 1px solid #fecaca;
+					border-radius: 0.5rem;
+					background: #fef2f2;
+					color: #991b1b;
+					font-size: 0.875rem;
+					font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+					line-height: 1.4;
+					text-align: start;
+				}
 				.emdash-plugin-block-placeholder {
 					margin: 0.75rem 0;
 					padding: 0.625rem 0.875rem;
@@ -2676,6 +2759,11 @@ export function InlinePortableTextEditor({
 						border-color: #1e40af;
 						background: #172554;
 						color: #dbeafe;
+					}
+					.emdash-inline-editor-error {
+						border-color: #991b1b;
+						background: #450a0a;
+						color: #fee2e2;
 					}
 					.emdash-plugin-block-placeholder {
 						border-color: #374151;
