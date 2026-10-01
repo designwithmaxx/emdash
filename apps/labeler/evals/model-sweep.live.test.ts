@@ -15,6 +15,7 @@ import type {
 } from "../src/ai/types.js";
 import { createUnanimousTextModerationAdapter, unanimousTextModelId } from "../src/ai/unanimous.js";
 import { createWorkersAiImageAdapter, createWorkersAiTextAdapter } from "../src/ai/workers-ai.js";
+import { createClefImageAdapter, createClefTextAdapter, isClefModelId } from "./clef.js";
 import { loadEvalDataset } from "./dataset.js";
 import { calculateEvalMetrics, evaluateBudgets, runEvaluation } from "./harness.js";
 import { loadRecordedBaseline } from "./recordings.js";
@@ -41,6 +42,7 @@ const disableThinkingModels = new Set(parseModels(process.env.MODEL_SWEEP_DISABL
 const imageMaxDimension = parseOptionalInteger(process.env.MODEL_SWEEP_IMAGE_MAX_DIMENSION);
 const maxCompletionTokens = parseOptionalInteger(process.env.MODEL_SWEEP_MAX_COMPLETION_TOKENS);
 const reasoningEffort = parseReasoningEffort(process.env.MODEL_SWEEP_REASONING_EFFORT);
+const clefThreshold = Number(process.env.MODEL_SWEEP_CLEF_THRESHOLD ?? "0.5");
 
 describe("live Workers AI model sweep", () => {
 	it("evaluates production adapters against the canonical corpus", async () => {
@@ -113,14 +115,21 @@ describe("live Workers AI model sweep", () => {
 									],
 								)
 							: textAdapter(model);
-				const image = createWorkersAiImageAdapter(ai, {
-					modelId: lane === "image" ? model : baseline.imageIdentity.modelId,
-					promptHash: imagePromptHash,
-					configuredUnits: 1,
-					...(disableThinkingModels.has(model) ? { thinking: false } : {}),
-					...(maxCompletionTokens === undefined ? {} : { maxCompletionTokens }),
-					...(reasoningEffort === undefined ? {} : { reasoningEffort }),
-				});
+				const image =
+					lane === "image" && isClefModelId(model)
+						? createClefImageAdapter(ai, {
+								modelId: model,
+								threshold: clefThreshold,
+								configuredUnits: 1,
+							})
+						: createWorkersAiImageAdapter(ai, {
+								modelId: lane === "image" ? model : baseline.imageIdentity.modelId,
+								promptHash: imagePromptHash,
+								configuredUnits: 1,
+								...(disableThinkingModels.has(model) ? { thinking: false } : {}),
+								...(maxCompletionTokens === undefined ? {} : { maxCompletionTokens }),
+								...(reasoningEffort === undefined ? {} : { reasoningEffort }),
+							});
 				const bundle = await runEvaluation({
 					dataset,
 					mode: "live",
@@ -150,6 +159,13 @@ describe("live Workers AI model sweep", () => {
 			}
 
 			function textAdapter(modelId: string): TextModerationAdapter {
+				if (isClefModelId(modelId)) {
+					return createClefTextAdapter(ai, {
+						modelId,
+						threshold: clefThreshold,
+						configuredUnits: 1,
+					});
+				}
 				return createWorkersAiTextAdapter(ai, {
 					modelId,
 					promptHash: textPromptHash,
@@ -173,6 +189,7 @@ describe("live Workers AI model sweep", () => {
 			imageMaxDimension,
 			maxCompletionTokens,
 			reasoningEffort,
+			clefThreshold,
 			repeatCount,
 			caseConcurrency,
 			liveFixtureIds: [...liveFixtureIds],
