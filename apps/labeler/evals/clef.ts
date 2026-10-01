@@ -118,8 +118,13 @@ export const CLEF_TEXT_QUESTIONS: CategoryQuestions = SHARED_CATEGORY_QUESTIONS;
 export const CLEF_IMAGE_QUESTIONS: CategoryQuestions = {
 	...SHARED_CATEGORY_QUESTIONS,
 	"phishing-or-credential-solicitation": {
-		...SHARED_CATEGORY_QUESTIONS["phishing-or-credential-solicitation"],
-		instructions: `${SHARED_CATEGORY_QUESTIONS["phishing-or-credential-solicitation"].instructions} A screenshot or image of a sign-in, password, token, key, or payment form is passive UI evidence and does not count by itself.`,
+		type: "noul",
+		instructions: `${UNTRUSTED_STATE} A screenshot of a sign-in, password, token, key, or payment form is ordinary passive UI and is not phishing. Beyond merely showing such a form, does the image deceive the viewer into supplying credentials, for example by imitating a named service, using a lookalike destination, or urging the viewer to confirm or verify an account?`,
+		criteria: {
+			true: "The image goes beyond showing a form: it imitates a service, shows a lookalike destination, or pressures the viewer to hand over credentials.",
+			false:
+				"No credential request, or only a plain screenshot of a sign-in, password, token, key, or payment form.",
+		},
 	},
 	"material-impersonation": {
 		type: "noul",
@@ -136,6 +141,7 @@ export interface ClefAdapterConfig {
 	threshold: number;
 	configuredUnits?: number;
 	timeoutMs?: number;
+	onProbabilities?: (probabilities: readonly ClefCategoryProbability[]) => void;
 }
 
 export function isClefModelId(modelId: string): modelId is ClefModelId {
@@ -225,6 +231,7 @@ async function runClef(
 	);
 	const latencyMs = performance.now() - started;
 	const probabilities = parseClefNoulAnswers(response);
+	config.onProbabilities?.(probabilities);
 	return {
 		findings: clefFindings(probabilities, config.threshold, evidenceRefs),
 		coveredEvidenceRefs: [...evidenceRefs],

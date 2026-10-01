@@ -2,6 +2,7 @@ import { MODERATION_FINDING_CATEGORIES } from "@emdash-cms/registry-moderation";
 import { describe, expect, it } from "vitest";
 
 import { createClefTextAdapter } from "../evals/clef.js";
+import { parseManualImageClefOptions } from "../evals/sweep-worker.js";
 import { ModelOutputError } from "../src/ai/types.js";
 import type { WorkersAiBinding } from "../src/ai/workers-ai.js";
 
@@ -45,6 +46,16 @@ function binding(response: unknown, calls: unknown[] = []): WorkersAiBinding {
 		},
 	};
 }
+
+describe("manual image model selection", () => {
+	it("keeps the production adapter when no model is requested", () => {
+		expect(parseManualImageClefOptions({ fileName: "a.png" })).toBeUndefined();
+	});
+
+	it("rejects a model that is not a Clef id instead of falling back", () => {
+		expect(() => parseManualImageClefOptions({ model: "@cf/cloudflare/cleff" })).toThrow(TypeError);
+	});
+});
 
 describe("Clef moderation adapter", () => {
 	it("reports categories at or above the threshold as findings covering every evidence ref", async () => {
