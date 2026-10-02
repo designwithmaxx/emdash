@@ -767,7 +767,7 @@ async function readStoredBundleRequires(
 /**
  * Load-time env gate shared by the cold-start loader and the install-sync
  * loader: evaluate a stored bundle's `requires` against the host environment
- * and record the outcome in {@link sandboxedPluginLoadIncompatibilities}.
+ * and record the outcome in {@link getSandboxedPluginLoadIncompatibilities}.
  * Returns the unsatisfied constraints when the bundle must be skipped, `null`
  * when it may load. Unparseable or missing `requires` fails open (returns
  * `null`), mirroring the install/update gate; constraints the host can't
