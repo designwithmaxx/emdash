@@ -1,5 +1,16 @@
 # @emdash-cms/plugin-test
 
+## 0.2.8
+
+### Patch Changes
+
+- Updated dependencies [[`6cf612c`](https://github.com/emdash-cms/emdash/commit/6cf612cbf2a04a7eb1b22cb3e4ffecb53a1a438a), [`2210c2c`](https://github.com/emdash-cms/emdash/commit/2210c2c7688a8d407143dfe4d565898674470412)]:
+  - emdash@1.1.1
+  - @emdash-cms/plugin-types@0.6.0
+  - @emdash-cms/cloudflare@1.1.1
+  - @emdash-cms/plugin-cli@0.13.3
+  - @emdash-cms/blocks@1.1.1
+
 ## 0.2.7
 
 ### Patch Changes

@@ -1,5 +1,13 @@
 # @emdash-cms/registry-cli
 
+## 0.13.3
+
+### Patch Changes
+
+- Updated dependencies [[`2210c2c`](https://github.com/emdash-cms/emdash/commit/2210c2c7688a8d407143dfe4d565898674470412)]:
+  - @emdash-cms/plugin-types@0.6.0
+  - @emdash-cms/registry-verification@0.3.4
+
 ## 0.13.2
 
 ### Patch Changes

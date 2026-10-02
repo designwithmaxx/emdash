@@ -1,5 +1,18 @@
 # emdash
 
+## 1.1.1
+
+### Patch Changes
+
+- [#3731](https://github.com/emdash-cms/emdash/pull/3731) [`6cf612c`](https://github.com/emdash-cms/emdash/commit/6cf612cbf2a04a7eb1b22cb3e4ffecb53a1a438a) Thanks [@emdashbot](https://github.com/apps/emdashbot)! - Fixes `decodeSlug()` so malformed percent-escaped slugs return `undefined` instead of throwing, letting `[slug]` pages fall through to their 404 handling.
+- Updated dependencies [[`e63cc44`](https://github.com/emdash-cms/emdash/commit/e63cc44a953f4786fa211a8989a6547267635be5), [`841a5b3`](https://github.com/emdash-cms/emdash/commit/841a5b3f3bc1c01c35b3e770eeab673b3c5bb870), [`2210c2c`](https://github.com/emdash-cms/emdash/commit/2210c2c7688a8d407143dfe4d565898674470412), [`2210c2c`](https://github.com/emdash-cms/emdash/commit/2210c2c7688a8d407143dfe4d565898674470412)]:
+  - @emdash-cms/admin@1.1.1
+  - @emdash-cms/plugin-types@0.6.0
+  - @emdash-cms/registry-verification@0.3.4
+  - @emdash-cms/auth@1.1.1
+  - @emdash-cms/blocks@1.1.1
+  - @emdash-cms/gutenberg-to-portable-text@1.1.1
+
 ## 1.1.0
 
 ### Minor Changes

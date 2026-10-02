@@ -1,5 +1,22 @@
 # @emdash-cms/admin
 
+## 1.1.1
+
+### Patch Changes
+
+- [#3728](https://github.com/emdash-cms/emdash/pull/3728) [`e63cc44`](https://github.com/emdash-cms/emdash/commit/e63cc44a953f4786fa211a8989a6547267635be5) Thanks [@huketo](https://github.com/huketo)! - Keeps the WordPress migration-key and site-URL fields inside their cards on narrow screens, while preserving the wider-screen layout. Technical keys and URLs remain left-to-right in RTL locales, and the site-URL input exposes its localized name to assistive technologies.
+
+- [#3718](https://github.com/emdash-cms/emdash/pull/3718) [`841a5b3`](https://github.com/emdash-cms/emdash/commit/841a5b3f3bc1c01c35b3e770eeab673b3c5bb870) Thanks [@huketo](https://github.com/huketo)! - Expands the Korean admin translations to cover almost every admin screen and corrects terminology in the existing Korean text. Korean remains disabled in the locale selector.
+  
+  The catalog now covers sign-in, passkeys, invitation and sign-in emails, and device authorization; the dashboard, setup, and shared notifications, error, and loading screens; content lists, editing, publishing, and scheduling; rich-text, image, gallery, and block editing; content types, fields, relationships, and references; media; bylines and taxonomies; menus, widgets, and sections; site settings, users, redirects, backups, and transfer tokens; plugins, themes, and the registry; and site transfer and WordPress imports.
+  
+  The Korean text distinguishes content authors from public byline profiles, and the permanent-delete confirmation now shows the content title instead of leaving it blank.
+
+- [#3732](https://github.com/emdash-cms/emdash/pull/3732) [`2210c2c`](https://github.com/emdash-cms/emdash/commit/2210c2c7688a8d407143dfe4d565898674470412) Thanks [@ascorbic](https://github.com/ascorbic)! - Fixes plugin permissions for sending email, handling outgoing email, and adding page scripts and styles showing as raw capability names in the admin. They now have readable labels in the plugin list, marketplace, and install consent dialog.
+- Updated dependencies [[`2210c2c`](https://github.com/emdash-cms/emdash/commit/2210c2c7688a8d407143dfe4d565898674470412)]:
+  - @emdash-cms/plugin-types@0.6.0
+  - @emdash-cms/blocks@1.1.1
+
 ## 1.1.0
 
 ### Minor Changes
