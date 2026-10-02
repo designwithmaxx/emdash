@@ -1,5 +1,5 @@
 ---
-"create-emdash": patch
+"create-emdash": minor
 ---
 
 Adds an `EMDASH_TEMPLATES_REPO` environment variable to `create-emdash` so scaffolding can pull templates from a different `owner/repo` on GitHub instead of the default `emdash-cms/templates`.
