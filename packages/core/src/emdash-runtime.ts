@@ -718,13 +718,23 @@ const sandboxedRouteMetaCache = new Map<string, Map<string, RouteMeta>>();
 let sandboxRunner: SandboxRunner | null = null;
 /**
  * Load-time env-compat record for sandboxed plugins skipped because their
- * `requires` exclude this host: pluginId → unsatisfied constraints. Module
- * level (like the sandbox caches above) because the cold-start loader is
- * static while the sync loader runs on the instance; both maintain it. Never
- * written to `_plugin_state` — the DB row stays `active` so the plugin
- * resumes on a compatible host without a status flip.
+ * `requires` exclude this host: pluginId → unsatisfied constraints. The
+ * cold-start loader is static while the sync loader runs on the instance, so
+ * both maintain this shared record; it lives on globalThis behind a Symbol
+ * (same bundler-duplication reasoning as the db cache above). Never written
+ * to `_plugin_state` — the DB row stays `active` so the plugin resumes on a
+ * compatible host without a status flip.
  */
-const sandboxedPluginLoadIncompatibilities = new Map<string, EnvMismatch[]>();
+const LOAD_INCOMPATIBILITIES_KEY = Symbol.for("emdash:sandboxed-plugin-load-incompatibilities");
+function getSandboxedPluginLoadIncompatibilities(): Map<string, EnvMismatch[]> {
+	// eslint-disable-next-line typescript/no-unsafe-type-assertion -- globalThis symbol slot, written only below
+	let map = globalSymbolStore[LOAD_INCOMPATIBILITIES_KEY] as Map<string, EnvMismatch[]> | undefined;
+	if (!map) {
+		map = new Map();
+		globalSymbolStore[LOAD_INCOMPATIBILITIES_KEY] = map;
+	}
+	return map;
+}
 
 /**
  * Read the raw `requires` block from a stored bundle's manifest.json.
@@ -779,10 +789,10 @@ async function gateStoredBundleOnHostEnv(
 	}
 	const mismatches = checkEnvCompatibility(requires, hostEnv);
 	if (mismatches.length === 0) {
-		sandboxedPluginLoadIncompatibilities.delete(pluginId);
+		getSandboxedPluginLoadIncompatibilities().delete(pluginId);
 		return null;
 	}
-	sandboxedPluginLoadIncompatibilities.set(pluginId, mismatches);
+	getSandboxedPluginLoadIncompatibilities().set(pluginId, mismatches);
 	const summary = mismatches
 		.map((m) => `${m.key} requires ${m.required} but host is ${m.host}`)
 		.join("; ");
@@ -1101,7 +1111,7 @@ export class EmDashRuntime {
 		sandboxedPluginCache.clear();
 		sandboxedManifestCache.clear();
 		sandboxedRouteMetaCache.clear();
-		sandboxedPluginLoadIncompatibilities.clear();
+		getSandboxedPluginLoadIncompatibilities().clear();
 		marketplaceManifestCache.clear();
 		marketplacePluginKeys.clear();
 		registryPluginKeys.clear();
@@ -1310,7 +1320,7 @@ export class EmDashRuntime {
 				if (!desiredVersion) {
 					this.pluginStates.delete(pluginId);
 					this.enabledPlugins.delete(pluginId);
-					sandboxedPluginLoadIncompatibilities.delete(pluginId);
+					getSandboxedPluginLoadIncompatibilities().delete(pluginId);
 				}
 
 				const existing = sandboxedPluginCache.get(key);
@@ -5569,7 +5579,7 @@ export class EmDashRuntime {
 	 * only — consult after a sync.
 	 */
 	getSandboxedPluginLoadIncompatibility(pluginId: string): EnvMismatch[] | null {
-		return sandboxedPluginLoadIncompatibilities.get(pluginId) ?? null;
+		return getSandboxedPluginLoadIncompatibilities().get(pluginId) ?? null;
 	}
 
 	async handlePluginApiRoute(
