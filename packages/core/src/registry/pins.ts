@@ -34,6 +34,11 @@ import type { RegistryConfigInput } from "./types.js";
 /** File name read by {@link loadRegistryPins}, relative to the project cwd. */
 export const REGISTRY_PINS_FILE = "registry-plugins.json";
 
+/** Type guard for Node.js ErrnoException */
+function isNodeError(error: unknown): error is NodeJS.ErrnoException {
+	return error instanceof Error && "code" in error;
+}
+
 /** A single exact registry-plugin pin. */
 export interface RegistryPin {
 	/** Publisher DID. */
@@ -96,7 +101,7 @@ export async function loadRegistryPins(
 	try {
 		raw = await readFile(filePath, "utf8");
 	} catch (error) {
-		if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+		if (isNodeError(error) && error.code === "ENOENT") {
 			return { pins: [], source: null };
 		}
 		throw error;
