@@ -6,9 +6,9 @@ import { Kysely } from "kysely";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { handleRegistryInstall } from "../../../src/api/handlers/registry.js";
-import { createDialect } from "../../../src/db/sqlite.js";
-import { runMigrations } from "../../../src/db/index.js";
 import type { Database } from "../../../src/database/types.js";
+import { runMigrations } from "../../../src/db/index.js";
+import { createDialect } from "../../../src/db/sqlite.js";
 import type { SandboxRunner } from "../../../src/plugins/sandbox/types.js";
 import {
 	REGISTRY_PINS_FILE,
@@ -194,7 +194,9 @@ describe("installRegistryPins", () => {
 			acknowledgedReleaseCid: "bafy…release",
 			acknowledgedDeclaredAccess: ["media:read"],
 			acknowledgedPublicRoutes: ["api/quote"],
-			acknowledgedMcpTools: [{ name: "search", description: "d", route: "r", permission: "p", destructive: false }],
+			acknowledgedMcpTools: [
+				{ name: "search", description: "d", route: "r", permission: "p", destructive: false },
+			],
 		};
 
 		await installRegistryPins({

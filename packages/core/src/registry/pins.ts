@@ -116,9 +116,7 @@ export async function loadRegistryPins(
 	if (!result.success) {
 		const issue = result.error.issues[0];
 		const where = issue?.path.join(".") || "(root)";
-		throw new Error(
-			`Invalid ${filePath}: ${where}: ${issue?.message ?? "validation failed"}`,
-		);
+		throw new Error(`Invalid ${filePath}: ${where}: ${issue?.message ?? "validation failed"}`);
 	}
 	return { pins: result.data.plugins, source: filePath };
 }
