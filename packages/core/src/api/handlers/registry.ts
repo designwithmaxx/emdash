@@ -15,6 +15,7 @@ import {
 	checkEnvCompatibility,
 	compareVersions,
 	findSkippedEnvConstraints,
+	parseRequires,
 } from "@emdash-cms/registry-client/env";
 import type { HostEnv } from "@emdash-cms/registry-client/env";
 import { isProvenFirstRelease } from "@emdash-cms/registry-client/listing-policy";
@@ -906,6 +907,19 @@ export async function handleRegistryInstall(
 		// marketplace plugins that happen to share the publisher's slug.
 		bundle.manifest = { ...bundle.manifest, id: pluginId };
 
+		// Persist the release record's guarded `requires` into the stored
+		// bundle manifest so the load-time env gate can re-check it after a
+		// host upgrade. The stored manifest is unsigned, so the value must
+		// come from the signed record (already env-gated above), never from
+		// publisher-authored bundle bytes: strip whatever the bundle declared
+		// and write the guarded record value, omitting the key entirely when
+		// the record carries no constraints.
+		const guardedRequires = parseRequires(release.requires);
+		const storedManifest = { ...bundle.manifest };
+		delete storedManifest.requires;
+		if (Object.keys(guardedRequires).length > 0) storedManifest.requires = guardedRequires;
+		bundle.manifest = storedManifest;
+
 		// Integrity: the bundle that will run MUST declare exactly the access
 		// the signed release record advertises. The consent dialog is driven
 		// from the record's `declaredAccess`, so a bundle enforcing something
@@ -1571,6 +1585,16 @@ export async function handleRegistryUpdate(
 		// Rewrite manifest.id to the opaque pluginId so the sandbox loader
 		// and R2 layout stay in sync across install and update.
 		bundle.manifest = { ...bundle.manifest, id: pluginId };
+
+		// Same persistence rule as install: the stored bundle manifest is
+		// unsigned, so its `requires` must come from the signed release
+		// record (env-gated above) — never from publisher-authored bundle
+		// bytes. Refresh (or strip) whatever a previous install stored.
+		const guardedRequires = parseRequires(release.requires);
+		const storedManifest = { ...bundle.manifest };
+		delete storedManifest.requires;
+		if (Object.keys(guardedRequires).length > 0) storedManifest.requires = guardedRequires;
+		bundle.manifest = storedManifest;
 
 		// Integrity: same gate as install. The new bundle must declare exactly
 		// the access its signed release record advertises. Without it, an update
