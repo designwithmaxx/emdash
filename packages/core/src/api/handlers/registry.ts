@@ -17,7 +17,7 @@ import {
 	findSkippedEnvConstraints,
 	parseRequires,
 } from "@emdash-cms/registry-client/env";
-import type { HostEnv } from "@emdash-cms/registry-client/env";
+import type { EnvMismatch, HostEnv } from "@emdash-cms/registry-client/env";
 import { isProvenFirstRelease } from "@emdash-cms/registry-client/listing-policy";
 import type { ReleaseHistoryEvidence } from "@emdash-cms/registry-client/listing-policy";
 import { evaluateRegistryReleaseWithdrawal } from "@emdash-cms/registry-client/withdrawal";
@@ -1762,6 +1762,16 @@ export interface RegistryUpdateCheck {
 	latest: string;
 	hasUpdate: boolean;
 	/**
+	 * Whether the latest release's `requires` is satisfied by the host. When
+	 * `false`, `hasUpdate` is forced to `false` — the update handler would
+	 * refuse with `ENV_INCOMPATIBLE` — and `incompatibleConstraints` carries
+	 * the mismatch list. Absent host env (older callers) reports `true`,
+	 * preserving the pure version-compare behavior.
+	 */
+	envCompatible: boolean;
+	/** Structured mismatches (`key`/`required`/`host`); present only when `envCompatible` is `false`. */
+	incompatibleConstraints?: EnvMismatch[];
+	/**
 	 * Both diff fields are `false` here by design: computing them at
 	 * update-check time would require downloading both bundles (or
 	 * extracting from the signed release extension and the installed
@@ -1776,13 +1786,16 @@ export interface RegistryUpdateCheck {
 /**
  * Bulk update check across every installed registry plugin. Queries the
  * aggregator for each plugin's latest release and reports `hasUpdate`
- * based on the version comparison. Plugins whose aggregator lookup fails
- * (unreachable, delisted, malformed) are skipped silently — one bad
- * publisher must not blank the whole admin Updates list.
+ * based on the version comparison. The latest release's `requires` is
+ * evaluated against the host env so a release the update handler would
+ * refuse never presents as an available update. Plugins whose aggregator
+ * lookup fails (unreachable, delisted, malformed) are skipped silently —
+ * one bad publisher must not blank the whole admin Updates list.
  */
 export async function handleRegistryUpdateCheck(
 	db: Kysely<Database>,
 	registryConfigInput: RegistryConfigInput | undefined,
+	opts?: { hostEnv?: HostEnv },
 ): Promise<ApiResult<{ items: RegistryUpdateCheck[] }>> {
 	const registryConfig = coerceRegistryConfig(registryConfigInput);
 	if (!registryConfig) {
@@ -1824,11 +1837,37 @@ export async function handleRegistryUpdateCheck(
 				const latest = releaseView.version;
 				if (!latest) continue;
 				const installed = plugin.version;
+
+				// The update handler refuses a release whose `requires` the
+				// host doesn't satisfy; the check must not advertise that
+				// release as an available update. `requires` comes off the
+				// aggregator-hydrated signed release record — the same value
+				// install/update enforce (their authoritative-record read is
+				// too expensive for a bulk check). Unparseable `requires`
+				// fails open here exactly as it does at install/update time.
+				let envCompatible = true;
+				let incompatibleConstraints: EnvMismatch[] | undefined;
+				if (opts?.hostEnv) {
+					const envError = assertEnvCompatible(releaseView.release?.requires, opts.hostEnv);
+					if (envError) {
+						envCompatible = false;
+						incompatibleConstraints = Object.entries(envError.details.requires).map(
+							([key, required]) => ({
+								key,
+								required,
+								host: envError.details.host[key] ?? "unknown",
+							}),
+						);
+					}
+				}
+
 				items.push({
 					pluginId: plugin.pluginId,
 					installed,
 					latest,
-					hasUpdate: latest !== installed,
+					hasUpdate: latest !== installed && envCompatible,
+					envCompatible,
+					incompatibleConstraints,
 					hasCapabilityChanges: false,
 					hasRouteVisibilityChanges: false,
 				});
