@@ -13,15 +13,29 @@ import {
 import { definePlugin, definePluginRoute } from "../../../src/plugins/define-plugin.js";
 import { dispatchPluginApiRequest } from "../../../src/plugins/http-route-dispatch.js";
 import type { SandboxedPluginInstance } from "../../../src/plugins/sandbox/types.js";
-import type { PluginRoute } from "../../../src/plugins/types.js";
+import type { PluginRoute, UserInfo } from "../../../src/plugins/types.js";
 
 const runtimes: EmDashRuntime[] = [];
+
+function adminUser(): UserInfo {
+	return {
+		id: "user-admin",
+		email: "admin@example.com",
+		name: "Admin",
+		role: 50,
+		createdAt: new Date().toISOString(),
+	};
+}
 
 afterEach(async () => {
 	await Promise.all(runtimes.splice(0).map((runtime) => runtime.shutdown()));
 });
 
-async function invokeTrusted(route: PluginRoute, request: Request) {
+async function invokeTrusted(
+	route: PluginRoute,
+	request: Request,
+	options: { user?: UserInfo } = {},
+) {
 	const runtime = await EmDashRuntime.create({
 		config: { database: { entrypoint: randomUUID(), config: {}, type: "sqlite" } },
 		plugins: [definePlugin({ id: "resp-demo", version: "1.0.0", routes: { test: route } })],
@@ -37,6 +51,7 @@ async function invokeTrusted(route: PluginRoute, request: Request) {
 		pluginId: "resp-demo",
 		path: "/test",
 		request,
+		user: options.user,
 	});
 }
 
@@ -87,7 +102,7 @@ async function invokeSandboxed(
 }
 
 describe("trusted plugin route raw Response passthrough", () => {
-	it("returns a trusted handler's Response verbatim (status, Set-Cookie, body)", async () => {
+	it("passes a trusted handler's Response through (status, Set-Cookie, body) and applies the default Cache-Control policy", async () => {
 		const response = await invokeTrusted(
 			definePluginRoute({
 				public: true,
@@ -101,6 +116,7 @@ describe("trusted plugin route raw Response passthrough", () => {
 		);
 		expect(response.status).toBe(201);
 		expect(response.headers.get("Set-Cookie")).toBe("a=b");
+		expect(response.headers.get("Cache-Control")).toBe("private, no-store");
 		expect(await response.text()).toBe("x");
 	});
 
@@ -126,5 +142,60 @@ describe("trusted plugin route raw Response passthrough", () => {
 			success: true,
 			data: { message: "sandbox-data" },
 		});
+	});
+});
+
+describe("trusted plugin route raw Response passthrough Cache-Control policy", () => {
+	it("applies private, no-store to a passthrough Response on a private route", async () => {
+		const response = await invokeTrusted(
+			definePluginRoute({
+				public: false,
+				handler: async () => new Response("session-data"),
+			}),
+			new Request("https://example.com/_emdash/api/plugins/resp-demo/test", {
+				method: "POST",
+				headers: { "X-EmDash-Request": "1" },
+			}),
+			{ user: adminUser() },
+		);
+		expect(response.status).toBe(200);
+		expect(await response.text()).toBe("session-data");
+		expect(response.headers.get("Cache-Control")).toBe("private, no-store");
+	});
+
+	it("applies the route's cacheControl to a passthrough Response on public GET/HEAD", async () => {
+		const route = definePluginRoute({
+			public: true,
+			cacheControl: "public, max-age=60",
+			handler: async () => new Response("cached-body"),
+		});
+		const getResponse = await invokeTrusted(
+			route,
+			new Request("https://example.com/_emdash/api/plugins/resp-demo/test", { method: "GET" }),
+		);
+		expect(getResponse.headers.get("Cache-Control")).toBe("public, max-age=60");
+		expect(await getResponse.text()).toBe("cached-body");
+
+		const headResponse = await invokeTrusted(
+			route,
+			new Request("https://example.com/_emdash/api/plugins/resp-demo/test", { method: "HEAD" }),
+		);
+		expect(headResponse.headers.get("Cache-Control")).toBe("public, max-age=60");
+	});
+
+	it("does not override a Cache-Control the handler set itself", async () => {
+		const response = await invokeTrusted(
+			definePluginRoute({
+				public: true,
+				cacheControl: "public, max-age=60",
+				handler: async () =>
+					new Response("stream", {
+						headers: { "Cache-Control": "no-cache", "Content-Type": "text/plain" },
+					}),
+			}),
+			new Request("https://example.com/_emdash/api/plugins/resp-demo/test", { method: "GET" }),
+		);
+		expect(response.headers.get("Cache-Control")).toBe("no-cache");
+		expect(await response.text()).toBe("stream");
 	});
 });
