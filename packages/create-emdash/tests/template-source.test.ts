@@ -28,7 +28,9 @@ describe("resolveTemplateSource", () => {
 
 	it("applies the -cloudflare suffix rule for known keys on cloudflare", () => {
 		expect(resolveTemplateSource("blog", "cloudflare", env()).dir).toBe("blog-cloudflare");
-		expect(resolveTemplateSource("portfolio", "cloudflare", env()).dir).toBe("portfolio-cloudflare");
+		expect(resolveTemplateSource("portfolio", "cloudflare", env()).dir).toBe(
+			"portfolio-cloudflare",
+		);
 	});
 
 	it("overrides the repo via EMDASH_TEMPLATES_REPO", () => {

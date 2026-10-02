@@ -27,6 +27,7 @@ import {
 	validateProjectName,
 	wantsHelp,
 } from "./flags.js";
+import { CLOUDFLARE_TEMPLATES, NODE_TEMPLATES, resolveTemplateSource } from "./template-source.js";
 import {
 	isDirNonEmpty,
 	replacePackageManagerCommands,
@@ -35,11 +36,6 @@ import {
 	setWorkerLoader,
 	writeEncryptionKey,
 } from "./utils.js";
-import {
-	CLOUDFLARE_TEMPLATES,
-	NODE_TEMPLATES,
-	resolveTemplateSource,
-} from "./template-source.js";
 
 /** Defaults applied under `--yes` when the user omits a flag. */
 const DEFAULT_PLATFORM: Platform = "cloudflare";
