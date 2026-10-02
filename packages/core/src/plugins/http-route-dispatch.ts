@@ -149,6 +149,12 @@ export async function dispatchPluginApiRequest({
 			return apiError("INVALID_PLUGIN_RESPONSE", "Plugin returned an invalid response", 500);
 		}
 	} else {
+		// Trusted plugin handlers may return a raw `Response` (redirects,
+		// `Set-Cookie` session flows). Pass it through verbatim — no
+		// `apiSuccess` wrapping, no header allowlist. Sandboxed plugin wire
+		// results are plain deserialized objects, so this can only fire on
+		// the trusted path.
+		if (result.data instanceof Response) return result.data;
 		response = apiSuccess(result.data);
 	}
 	if (
