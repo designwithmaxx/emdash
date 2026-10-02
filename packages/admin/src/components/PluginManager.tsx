@@ -268,6 +268,7 @@ function PluginCard({ plugin, updateInfo, onEnable, onDisable, isToggling }: Plu
 
 	const isMarketplace = plugin.source === "marketplace";
 	const isRegistry = plugin.source === "registry";
+	const incompatibleWithHost = plugin.incompatibleWithHost ?? [];
 	const registryIdentity = useRegistryPluginIdentity(
 		isRegistry ? plugin.registryPublisherDid : undefined,
 		isRegistry ? plugin.registrySlug : undefined,
@@ -445,6 +446,9 @@ function PluginCard({ plugin, updateInfo, onEnable, onDisable, isToggling }: Plu
 							{!plugin.enabled && <Badge variant="secondary">{t`Disabled`}</Badge>}
 							{isMarketplace && <Badge variant="secondary">{t`Marketplace`}</Badge>}
 							{isRegistry && <Badge variant="secondary">{t`Registry`}</Badge>}
+							{incompatibleWithHost.length > 0 && (
+								<Badge variant="destructive">{t`Incompatible with host`}</Badge>
+							)}
 							{hasUpdate && (
 								<Badge variant="outline" className="border-kumo-brand text-kumo-link">
 									{t`v${updateInfo.latest} available`}
@@ -463,6 +467,13 @@ function PluginCard({ plugin, updateInfo, onEnable, onDisable, isToggling }: Plu
 						{plugin.description && registryIdentity?.status !== "invalid" && (
 							<p className="mt-0.5 text-sm text-kumo-subtle line-clamp-1">{plugin.description}</p>
 						)}
+
+						{/* Active but not loaded: the stored `requires` exclude this host. */}
+						{incompatibleWithHost.map((mismatch) => (
+							<p key={mismatch.key} className="mt-0.5 text-sm text-kumo-danger line-clamp-2">
+								{t`Not loaded: ${mismatch.key} requires ${mismatch.required}, this host is ${mismatch.host}. Upgrade or remove the plugin.`}
+							</p>
+						))}
 
 						{/* Feature indicators + inline capabilities */}
 						<div className="flex items-center gap-3 mt-1 text-sm text-kumo-subtle">
