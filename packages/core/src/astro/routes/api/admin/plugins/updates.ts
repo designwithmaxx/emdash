@@ -43,11 +43,9 @@ export const GET: APIRoute = async ({ locals }) => {
 			console.warn("[plugins/updates] marketplace check threw:", err);
 			return null;
 		}),
-		handleRegistryUpdateCheck(
-			emdash.db,
-			getRegistryConfigInput(emdash.config.registry),
-			{ hostEnv: hostEnvFromVersions(VERSION, emdash.config.astroVersion) },
-		).catch((err) => {
+		handleRegistryUpdateCheck(emdash.db, getRegistryConfigInput(emdash.config.registry), {
+			hostEnv: hostEnvFromVersions(VERSION, emdash.config.astroVersion),
+		}).catch((err) => {
 			console.warn("[plugins/updates] registry check threw:", err);
 			return null;
 		}),

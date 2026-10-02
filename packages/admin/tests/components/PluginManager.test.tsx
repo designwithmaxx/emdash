@@ -481,9 +481,13 @@ describe("PluginManager", () => {
 			</Wrapper>,
 		);
 		await expect.element(screen.getByText("Incompatible with host")).toBeInTheDocument();
-		await expect.element(
-			screen.getByText("Not loaded: env:astro requires ^5.6.0, this host is 6.0.0. Upgrade or remove the plugin."),
-		).toBeInTheDocument();
+		await expect
+			.element(
+				screen.getByText(
+					"Not loaded: env:astro requires ^5.6.0, this host is 6.0.0. Upgrade or remove the plugin.",
+				),
+			)
+			.toBeInTheDocument();
 		// The healthy card carries neither the badge nor the constraint line.
 		expect(screen.getByText("Incompatible with host").all()).toHaveLength(1);
 	});

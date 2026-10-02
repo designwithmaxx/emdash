@@ -274,8 +274,7 @@ function PluginCard({ plugin, updateInfo, onEnable, onDisable, isToggling }: Plu
 		isRegistry ? plugin.registrySlug : undefined,
 	);
 	const hasUpdate =
-		!!updateInfo &&
-		(updateInfo.hasUpdate ?? updateInfo.installed !== updateInfo.latest);
+		!!updateInfo && (updateInfo.hasUpdate ?? updateInfo.installed !== updateInfo.latest);
 	// A newer latest whose `requires` excludes the host: the update check
 	// refuses it (hasUpdate false) but the admin should say why, not omit it.
 	const updateIncompatible =

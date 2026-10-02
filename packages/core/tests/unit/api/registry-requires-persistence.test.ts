@@ -22,18 +22,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { NodeSqliteCompatDatabase as BetterSqlite3 } from "#node-sqlite";
 
-import {
-	handleRegistryInstall,
-	handleRegistryUpdate,
-} from "../../../src/api/handlers/registry.js";
+import { handleRegistryInstall, handleRegistryUpdate } from "../../../src/api/handlers/registry.js";
 import { runMigrations } from "../../../src/database/migrations/runner.js";
 import type { Database } from "../../../src/database/types.js";
 import { openNodeSqliteDatabase } from "../../../src/db/node-sqlite-compat.js";
 import { EmDashRuntime, type RuntimeDependencies } from "../../../src/emdash-runtime.js";
-import type {
-	SandboxedPluginInstance,
-	SandboxRunner,
-} from "../../../src/plugins/sandbox/types.js";
+import type { SandboxedPluginInstance, SandboxRunner } from "../../../src/plugins/sandbox/types.js";
 import { PluginStateRepository } from "../../../src/plugins/state.js";
 import { setDefaultRegistryArtifactTransport } from "../../../src/registry/artifact-fetch.js";
 import type { AuthoritativeRecordReader } from "../../../src/registry/authoritative-records.js";
@@ -294,7 +288,11 @@ describe("registry requires persistence", () => {
 			"fetch",
 			vi.fn(() => Promise.resolve(new Response(bytes))),
 		);
-		const reader = await authoritativeReader(options.version, options.recordRequires, checksum.value);
+		const reader = await authoritativeReader(
+			options.version,
+			options.recordRequires,
+			checksum.value,
+		);
 
 		const preview = await handleRegistryInstall(
 			db,
@@ -383,21 +381,14 @@ describe("registry requires persistence", () => {
 			vi.fn(() => Promise.resolve(new Response(v2Bytes))),
 		);
 
-		const updated = await handleRegistryUpdate(
-			db,
-			storage,
-			sandbox,
-			registryConfig,
-			pluginId,
-			{
-				hostEnv: { "env:astro": "6.1.0" },
-				readAuthoritativeRecords: await authoritativeReader(
-					"2.0.0",
-					{ "env:astro": "^6.0.0" },
-					v2Checksum.value,
-				),
-			},
-		);
+		const updated = await handleRegistryUpdate(db, storage, sandbox, registryConfig, pluginId, {
+			hostEnv: { "env:astro": "6.1.0" },
+			readAuthoritativeRecords: await authoritativeReader(
+				"2.0.0",
+				{ "env:astro": "^6.0.0" },
+				v2Checksum.value,
+			),
+		});
 		expect(updated.success).toBe(true);
 		if (!updated.success) throw new Error(`update failed: ${updated.error.message}`);
 

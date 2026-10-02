@@ -117,7 +117,9 @@ describe("handleRegistryUpdateCheck env gate", () => {
 	it("reports hasUpdate true when the host satisfies the latest release's requires", async () => {
 		getLatestRelease.mockImplementation(({ package: slug }: { package: string }) => {
 			if (slug === "gallery") {
-				return Promise.resolve(releaseView("2.0.0", { "env:emdash": "^1.0.0", "env:astro": ">=4.0.0" }));
+				return Promise.resolve(
+					releaseView("2.0.0", { "env:emdash": "^1.0.0", "env:astro": ">=4.0.0" }),
+				);
 			}
 			return Promise.resolve(releaseView("1.0.0", {}));
 		});
@@ -125,12 +127,14 @@ describe("handleRegistryUpdateCheck env gate", () => {
 		const result = await handleRegistryUpdateCheck(db, CONFIG, { hostEnv: HOST_ENV });
 
 		expect(result.success).toBe(true);
-		expect(result.data?.items.find((item) => item.pluginId === "r_gallery000000000")).toMatchObject({
-			latest: "2.0.0",
-			hasUpdate: true,
-			envCompatible: true,
-			incompatibleConstraints: undefined,
-		});
+		expect(result.data?.items.find((item) => item.pluginId === "r_gallery000000000")).toMatchObject(
+			{
+				latest: "2.0.0",
+				hasUpdate: true,
+				envCompatible: true,
+				incompatibleConstraints: undefined,
+			},
+		);
 	});
 
 	it("fails open (hasUpdate true) when the latest release's requires is unparseable", async () => {
@@ -144,11 +148,13 @@ describe("handleRegistryUpdateCheck env gate", () => {
 		const result = await handleRegistryUpdateCheck(db, CONFIG, { hostEnv: HOST_ENV });
 
 		expect(result.success).toBe(true);
-		expect(result.data?.items.find((item) => item.pluginId === "r_gallery000000000")).toMatchObject({
-			latest: "2.0.0",
-			hasUpdate: true,
-			envCompatible: true,
-		});
+		expect(result.data?.items.find((item) => item.pluginId === "r_gallery000000000")).toMatchObject(
+			{
+				latest: "2.0.0",
+				hasUpdate: true,
+				envCompatible: true,
+			},
+		);
 	});
 
 	it("still skips only the plugin whose aggregator lookup fails", async () => {

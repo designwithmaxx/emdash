@@ -203,7 +203,14 @@ export async function handlePluginList(
 			if (state.source !== "marketplace" && state.source !== "registry") continue;
 			if (configuredIds.has(state.pluginId)) continue;
 
-			items.push(buildStateOnlyPluginInfo(state, marketplaceUrl, runtimeSettingsSchemaLookup, loadIncompatibilityLookup));
+			items.push(
+				buildStateOnlyPluginInfo(
+					state,
+					marketplaceUrl,
+					runtimeSettingsSchemaLookup,
+					loadIncompatibilityLookup,
+				),
+			);
 		}
 
 		return {

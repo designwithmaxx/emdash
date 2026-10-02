@@ -328,27 +328,22 @@ describe("EmDashRuntime sandboxed plugin host wiring", () => {
 			storage: MemoryStorage,
 			extra: Partial<RuntimeDependencies> = {},
 		): RuntimeDependencies {
-			return createDeps(
-				invokeHook,
-				{
-					config: {
-						database: {
-							entrypoint: `test-load-gate-${randomUUID()}`,
-							config: {},
-							type: "sqlite",
-						},
-						storage: { entrypoint: `memory-${randomUUID()}`, config: {} },
-						astroVersion: "5.6.0",
-						...(source === "registry" ? { registry: "https://registry.example.com" } : {}),
-						...(source === "marketplace"
-							? { marketplace: "https://marketplace.example.com" }
-							: {}),
+			return createDeps(invokeHook, {
+				config: {
+					database: {
+						entrypoint: `test-load-gate-${randomUUID()}`,
+						config: {},
+						type: "sqlite",
 					},
-					createStorage: () => storage,
-					sandboxedPluginEntries: [],
-					...extra,
+					storage: { entrypoint: `memory-${randomUUID()}`, config: {} },
+					astroVersion: "5.6.0",
+					...(source === "registry" ? { registry: "https://registry.example.com" } : {}),
+					...(source === "marketplace" ? { marketplace: "https://marketplace.example.com" } : {}),
 				},
-			);
+				createStorage: () => storage,
+				sandboxedPluginEntries: [],
+				...extra,
+			});
 		}
 
 		async function runMediaHook(target: EmDashRuntime): Promise<void> {
