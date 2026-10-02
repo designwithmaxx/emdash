@@ -1101,6 +1101,7 @@ export class EmDashRuntime {
 		sandboxedPluginCache.clear();
 		sandboxedManifestCache.clear();
 		sandboxedRouteMetaCache.clear();
+		sandboxedPluginLoadIncompatibilities.clear();
 		marketplaceManifestCache.clear();
 		marketplacePluginKeys.clear();
 		registryPluginKeys.clear();
@@ -1346,7 +1347,9 @@ export class EmDashRuntime {
 				// against this host so a plugin whose constraints exclude the
 				// running core never executes silently after an upgrade. Mirrors
 				// the install/update gate; unparseable or missing `requires`
-				// fails open and loads.
+				// fails open and loads. Intentionally reads manifest.json again
+				// (raw JSON for the gate vs typed bundle in loadBundleFromR2
+				// below); one extra storage read per plugin per sync is accepted.
 				const incompatible = await gateStoredBundleOnHostEnv(
 					this.storage,
 					source,
@@ -2793,7 +2796,9 @@ export class EmDashRuntime {
 
 				// Load-time env gate (mirrors syncSandboxedSourcePlugins): a
 				// plugin whose stored `requires` exclude this host must not run
-				// after a core upgrade.
+				// after a core upgrade. Intentionally re-reads manifest.json
+				// (raw JSON for the gate vs typed bundle in loadBundleFromR2
+				// below); one extra storage read per plugin per sync is accepted.
 				const incompatible = await gateStoredBundleOnHostEnv(
 					storage,
 					source,
