@@ -25,7 +25,7 @@ import path from "node:path";
 import type { Kysely } from "kysely";
 import { z } from "zod";
 
-import { handleRegistryInstall } from "../api/handlers/registry.js";
+import { handleRegistryInstall, type RegistryInstallInput } from "../api/handlers/registry.js";
 import type { Database } from "../database/types.js";
 import type { SandboxRunner } from "../plugins/sandbox/types.js";
 import type { Storage } from "../storage/types.js";
@@ -54,6 +54,17 @@ export interface RegistryPinResult {
 	/** Hashed, opaque plugin id when the install succeeded. */
 	pluginId?: string;
 }
+
+/**
+ * Consent payload a headless caller supplies per {@link installRegistryPins}
+ * call, threaded verbatim into `handleRegistryInstall`'s input. Mirrors the
+ * admin consent dialog: the caller must fetch the signed package/release
+ * record CIDs from the aggregator (as the admin UI does at browse time) and
+ * lift the acknowledged capabilities, MCP tools, and public routes from the
+ * release's bundle manifest. Absent, the install pipeline's consent gates
+ * fail the pin exactly as they fail an un-consented admin request.
+ */
+export type RegistryPinInstallOpts = Omit<RegistryInstallInput, "did" | "slug" | "version">;
 
 const registryPinSchema = z.object({
 	did: z.string().min(1),
@@ -116,6 +127,14 @@ export async function loadRegistryPins(
  * Install each pin sequentially through `handleRegistryInstall`, passing the
  * pin's exact `version` so the aggregator's "latest" selection never applies.
  *
+ * Headless callers (plain Node, no admin UI) must obtain install consent
+ * themselves — fetch the signed package/release record CIDs from the
+ * aggregator and lift the acknowledged capabilities, MCP tools, and public
+ * routes from the bundle manifest — and pass them via `deps.installOpts`.
+ * Without them, every pin that triggers a consent gate fails with
+ * `RECORD_CONSENT_REQUIRED` / `DECLARED_ACCESS_REQUIRED` (etc.), which is the
+ * correct policy: consent the caller never collected must not be implied.
+ *
  * Per-pin failures — both structured `ApiResult` failures and unexpected
  * handler exceptions — are captured in the returned results and never abort
  * the remaining pins or throw. `onProgress` (when given) is invoked with
@@ -127,6 +146,8 @@ export async function installRegistryPins(deps: {
 	sandboxRunner: SandboxRunner;
 	registryConfig?: RegistryConfigInput;
 	pins: RegistryPin[];
+	/** Caller-obtained consent; threaded verbatim into each install. */
+	installOpts?: RegistryPinInstallOpts;
 	onProgress?: (r: RegistryPinResult) => void;
 }): Promise<RegistryPinResult[]> {
 	const results: RegistryPinResult[] = [];
@@ -138,7 +159,7 @@ export async function installRegistryPins(deps: {
 				deps.storage,
 				deps.sandboxRunner,
 				deps.registryConfig,
-				{ did: pin.did, slug: pin.slug, version: pin.version },
+				{ did: pin.did, slug: pin.slug, version: pin.version, ...deps.installOpts },
 			);
 			result = install.success
 				? { pin, ok: true, pluginId: install.data.pluginId }

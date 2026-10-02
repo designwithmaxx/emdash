@@ -763,5 +763,5 @@ export {
 	loadRegistryPins,
 	installRegistryPins,
 } from "./registry/pins.js";
-export type { RegistryPin, RegistryPinResult } from "./registry/pins.js";
+export type { RegistryPin, RegistryPinResult, RegistryPinInstallOpts } from "./registry/pins.js";
 export type { RegistryConfig, RegistryConfigInput } from "./registry/types.js";

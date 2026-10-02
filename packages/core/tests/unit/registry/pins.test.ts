@@ -183,6 +183,40 @@ describe("installRegistryPins", () => {
 		expect(onProgress).toHaveBeenNthCalledWith(2, results[1]);
 	});
 
+	it("threads installOpts through to the handler verbatim", async () => {
+		const pins = [makePin()];
+		mockedHandleRegistryInstall.mockResolvedValue({
+			success: true,
+			data: { pluginId: "plugin-1" },
+		} as Awaited<ReturnType<typeof handleRegistryInstall>>);
+		const installOpts = {
+			acknowledgedProfileCid: "bafy…profile",
+			acknowledgedReleaseCid: "bafy…release",
+			acknowledgedDeclaredAccess: ["media:read"],
+			acknowledgedPublicRoutes: ["api/quote"],
+			acknowledgedMcpTools: [{ name: "search", description: "d", route: "r", permission: "p", destructive: false }],
+		};
+
+		await installRegistryPins({
+			db,
+			storage,
+			sandboxRunner,
+			registryConfig,
+			pins,
+			installOpts,
+		});
+
+		expect(mockedHandleRegistryInstall).toHaveBeenCalledTimes(1);
+		expect(mockedHandleRegistryInstall).toHaveBeenNthCalledWith(
+			1,
+			db,
+			storage,
+			sandboxRunner,
+			registryConfig,
+			{ did: pins[0].did, slug: pins[0].slug, version: pins[0].version, ...installOpts },
+		);
+	});
+
 	it("never throws for per-pin failures, including handler exceptions", async () => {
 		const pins = [makePin()];
 		mockedHandleRegistryInstall.mockRejectedValue(new Error("boom"));
